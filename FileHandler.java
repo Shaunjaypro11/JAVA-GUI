@@ -5,9 +5,9 @@ import java.util.List;
 public class FileHandler {
 
     // ─── DATABASE CONFIG ──────────────────────────────────────────────────────
-    private static final String DB_URL      = "jdbc:mysql://sql12.freesqldatabase.com:3306/sql12820607?useSSL=false&allowPublicKeyRetrieval=true";
-    private static final String DB_USER     = "sql12820607";
-    private static final String DB_PASSWORD = "pxq652J1WMp";
+    private static final String DB_URL      = "jdbc:mysql://tramway.proxy.rlwy.net:18300/railway?useSSL=false&allowPublicKeyRetrieval=true";
+    private static final String DB_USER     = "root";
+    private static final String DB_PASSWORD = "LlFxoBQWbOIWLXhQEvTtSJqYRRjLykGj";
 
     // ─── GET CONNECTION ───────────────────────────────────────────────────────
     private static Connection getConnection() throws SQLException {
@@ -153,7 +153,6 @@ public class FileHandler {
     public static void saveGroups(List<Group> groups) {
         try (Connection conn = getConnection()) {
             for (Group g : groups) {
-                // Upsert group
                 try (PreparedStatement ps = conn.prepareStatement(
                         "INSERT INTO study_groups (group_name, subject, description, creator_username) " +
                         "VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE subject=VALUES(subject), description=VALUES(description)")) {
@@ -163,7 +162,6 @@ public class FileHandler {
                     ps.setString(4, g.getCreatorUsername());
                     ps.executeUpdate();
                 }
-                // Sync members
                 try (PreparedStatement ps = conn.prepareStatement(
                         "DELETE FROM group_members WHERE group_name = ?")) {
                     ps.setString(1, g.getGroupName()); ps.executeUpdate();
@@ -176,7 +174,6 @@ public class FileHandler {
                         ps.executeUpdate();
                     }
                 }
-                // Sync sessions
                 try (PreparedStatement ps = conn.prepareStatement(
                         "DELETE FROM study_sessions WHERE group_name = ?")) {
                     ps.setString(1, g.getGroupName()); ps.executeUpdate();
