@@ -1,8 +1,8 @@
-import javax.swing.*;
-import javax.swing.border.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.List;
+import javax.swing.*;
+import javax.swing.border.*;
 
 public class LoginFrame extends JFrame {
     private JTextField usernameField;
@@ -195,6 +195,13 @@ public class LoginFrame extends JFrame {
 
         if (username.isEmpty() || password.isEmpty()) {
             showMsg("Please fill in all fields.", "Warning", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // Admin login check
+        if (username.equals("admin") && password.equals("admin123")) {
+            dispose();
+            new AdminFrame().setVisible(true);
             return;
         }
 

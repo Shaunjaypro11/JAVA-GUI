@@ -198,6 +198,16 @@ public class FileHandler {
         }
     }
 
+    public static void deleteStudent(String username) {
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement("DELETE FROM students WHERE username = ?")) {
+            ps.setString(1, username);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("Error deleting student: " + e.getMessage());
+        }
+    }
+
     public static void deleteGroup(Group group) {
         try (Connection conn = getConnection()) {
             try (PreparedStatement ps = conn.prepareStatement(
