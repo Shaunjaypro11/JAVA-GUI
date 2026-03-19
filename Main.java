@@ -2,6 +2,9 @@ import javax.swing.*;
 
 public class Main {
     public static void main(String[] args) {
+        // Initialize database tables on startup
+        FileHandler.initializeDatabase();
+
         SwingUtilities.invokeLater(() -> {
             try {
                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
