@@ -51,7 +51,8 @@ public class FileHandler {
                 "  topic VARCHAR(200) NOT NULL," +
                 "  session_date VARCHAR(50) NOT NULL," +
                 "  session_time VARCHAR(50) NOT NULL," +
-                "  location VARCHAR(200) NOT NULL" +
+                "  location VARCHAR(200) NOT NULL," +
+                "  creator_username VARCHAR(50) DEFAULT \'\'" +
                 ")"
             );
 
@@ -144,7 +145,8 @@ public class FileHandler {
                     rs.getString("topic"),
                     rs.getString("session_date"),
                     rs.getString("session_time"),
-                    rs.getString("location")
+                    rs.getString("location"),
+                    rs.getString("creator_username")
                 ));
             }
         }
@@ -180,12 +182,13 @@ public class FileHandler {
                 }
                 for (StudySession s : g.getSessions()) {
                     try (PreparedStatement ps = conn.prepareStatement(
-                            "INSERT INTO study_sessions (group_name, topic, session_date, session_time, location) VALUES (?, ?, ?, ?, ?)")) {
+                            "INSERT INTO study_sessions (group_name, topic, session_date, session_time, location, creator_username) VALUES (?, ?, ?, ?, ?, ?)")) {
                         ps.setString(1, g.getGroupName());
                         ps.setString(2, s.getTopic());
                         ps.setString(3, s.getDate());
                         ps.setString(4, s.getTime());
                         ps.setString(5, s.getLocation());
+                        ps.setString(6, s.getCreatorUsername());
                         ps.executeUpdate();
                     }
                 }

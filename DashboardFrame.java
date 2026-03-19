@@ -575,16 +575,13 @@ public class DashboardFrame extends JFrame {
         return panel;
     }
 
-    // ─── SCHEDULE PANEL ───────────────────────────────────────────────────────
+    // ─── SCHEDULE PANEL ─────────────────────────────────────────────
     private JPanel buildSchedulePanel() {
         JPanel panel = new JPanel(new BorderLayout(0, 16));
         panel.setBackground(BG);
         panel.setBorder(new EmptyBorder(30, 30, 30, 30));
 
         JLabel title = sectionTitle("📅  Schedule Study Session");
-
-        JPanel left = new JPanel(new BorderLayout(0, 12));
-        left.setOpaque(false);
 
         // Schedule form
         JPanel form = makeCard();
@@ -609,29 +606,73 @@ public class DashboardFrame extends JFrame {
         gbc.gridy = 1;
         form.add(groupCombo, gbc);
 
+        // Topic
         JTextField topicField = addFormField(form, gbc, "Topic", 2);
-        JTextField dateField = addFormField(form, gbc, "Date (e.g. 2025-06-15)", 4);
-        JTextField timeField = addFormField(form, gbc, "Time (e.g. 2:00 PM)", 6);
+
+        // Date picker using JSpinner
+        gbc.gridy = 4;
+        form.add(makeFormLabel("Date"), gbc);
+        JSpinner dateSpinner = new JSpinner(new SpinnerDateModel());
+        JSpinner.DateEditor dateEditor = new JSpinner.DateEditor(dateSpinner, "yyyy-MM-dd");
+        dateSpinner.setEditor(dateEditor);
+        dateSpinner.setBackground(FIELD_BG);
+        dateSpinner.setForeground(TEXT);
+        dateSpinner.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        dateSpinner.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(71, 85, 105), 1, true),
+            BorderFactory.createEmptyBorder(4, 8, 4, 8)
+        ));
+        dateEditor.getTextField().setBackground(FIELD_BG);
+        dateEditor.getTextField().setForeground(TEXT);
+        dateEditor.getTextField().setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        gbc.gridy = 5;
+        form.add(dateSpinner, gbc);
+
+        // Time picker using JSpinner
+        gbc.gridy = 6;
+        form.add(makeFormLabel("Time"), gbc);
+        JSpinner timeSpinner = new JSpinner(new SpinnerDateModel());
+        JSpinner.DateEditor timeEditor = new JSpinner.DateEditor(timeSpinner, "hh:mm a");
+        timeSpinner.setEditor(timeEditor);
+        timeSpinner.setBackground(FIELD_BG);
+        timeSpinner.setForeground(TEXT);
+        timeSpinner.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        timeSpinner.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(71, 85, 105), 1, true),
+            BorderFactory.createEmptyBorder(4, 8, 4, 8)
+        ));
+        timeEditor.getTextField().setBackground(FIELD_BG);
+        timeEditor.getTextField().setForeground(TEXT);
+        timeEditor.getTextField().setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        gbc.gridy = 7;
+        form.add(timeSpinner, gbc);
+
+        // Location
         JTextField locationField = addFormField(form, gbc, "Location / Platform", 8);
 
         JButton scheduleBtn = makeAccentButton("Schedule Session", ACCENT2);
         gbc.gridy = 10; gbc.insets = new Insets(14, 0, 0, 0);
         form.add(scheduleBtn, gbc);
 
-        // Sessions list
+        // Sessions list with group info
         JLabel sessLabel = new JLabel("Upcoming Sessions");
         sessLabel.setFont(new Font("Segoe UI", Font.BOLD, 15));
         sessLabel.setForeground(TEXT);
 
+        // Track sessions with group reference for deletion
+        java.util.List<Object[]> sessionRefs = new java.util.ArrayList<>(); // [Group, StudySession]
         DefaultListModel<String> sessModel = new DefaultListModel<>();
         JList<String> sessList = makeStyledList(sessModel);
 
         Runnable refreshSessions = () -> {
             sessModel.clear();
+            sessionRefs.clear();
             for (Group g : groups) {
                 if (g.getMemberUsernames().contains(currentStudent.getUsername())) {
                     for (StudySession s : g.getSessions()) {
-                        sessModel.addElement("📖 " + g.getGroupName() + "  |  " + s.toString());
+                        String creatorTag = s.getCreatorUsername().equals(currentStudent.getUsername()) ? " [you]" : " [" + s.getCreatorUsername() + "]";
+                        sessModel.addElement("📖 " + g.getGroupName() + "  |  " + s.toString() + creatorTag);
+                        sessionRefs.add(new Object[]{g, s});
                     }
                 }
             }
@@ -639,6 +680,7 @@ public class DashboardFrame extends JFrame {
         };
         refreshSessions.run();
 
+        // Schedule button action
         scheduleBtn.addActionListener(e -> {
             Group selected = (Group) groupCombo.getSelectedItem();
             if (selected == null) {
@@ -646,24 +688,59 @@ public class DashboardFrame extends JFrame {
                 return;
             }
             String topic = topicField.getText().trim();
-            String date = dateField.getText().trim();
-            String time = timeField.getText().trim();
             String loc = locationField.getText().trim();
-            if (topic.isEmpty() || date.isEmpty() || time.isEmpty() || loc.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Please fill in all fields.", "Warning", JOptionPane.WARNING_MESSAGE);
+            if (topic.isEmpty() || loc.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Please fill in Topic and Location.", "Warning", JOptionPane.WARNING_MESSAGE);
                 return;
             }
-            selected.addSession(new StudySession(topic, date, time, loc));
+
+            // Format date and time from spinners
+            java.text.SimpleDateFormat dateFmt = new java.text.SimpleDateFormat("yyyy-MM-dd");
+            java.text.SimpleDateFormat timeFmt = new java.text.SimpleDateFormat("hh:mm a");
+            String date = dateFmt.format((java.util.Date) dateSpinner.getValue());
+            String time = timeFmt.format((java.util.Date) timeSpinner.getValue());
+
+            selected.addSession(new StudySession(topic, date, time, loc, currentStudent.getUsername()));
             FileHandler.saveGroups(groups);
-            topicField.setText(""); dateField.setText(""); timeField.setText(""); locationField.setText("");
+            topicField.setText("");
+            locationField.setText("");
             refreshSessions.run();
             JOptionPane.showMessageDialog(this, "Session scheduled!", "Success", JOptionPane.INFORMATION_MESSAGE);
+        });
+
+        // Delete session button
+        JButton deleteSessionBtn = makeAccentButton("Delete Selected Session", DANGER);
+        deleteSessionBtn.addActionListener(e -> {
+            int idx = sessList.getSelectedIndex();
+            if (idx < 0 || idx >= sessionRefs.size()) {
+                JOptionPane.showMessageDialog(this, "Please select a session to delete.", "Warning", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            Object[] ref = sessionRefs.get(idx);
+            Group g = (Group) ref[0];
+            StudySession s = (StudySession) ref[1];
+
+            if (!s.getCreatorUsername().equals(currentStudent.getUsername())) {
+                JOptionPane.showMessageDialog(this,
+                    "You can only delete sessions you created.\nThis session was created by: " + s.getCreatorUsername(),
+                    "Cannot Delete", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            int confirm = JOptionPane.showConfirmDialog(this,
+                "Delete session \"" + s.getTopic() + "\"?",
+                "Confirm Delete", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+            if (confirm != JOptionPane.YES_OPTION) return;
+            g.getSessions().remove(s);
+            FileHandler.saveGroups(groups);
+            refreshSessions.run();
+            JOptionPane.showMessageDialog(this, "Session deleted!", "Deleted", JOptionPane.INFORMATION_MESSAGE);
         });
 
         JPanel sessPanel = new JPanel(new BorderLayout(0, 8));
         sessPanel.setOpaque(false);
         sessPanel.add(sessLabel, BorderLayout.NORTH);
         sessPanel.add(makeScrollPane(sessList), BorderLayout.CENTER);
+        sessPanel.add(deleteSessionBtn, BorderLayout.SOUTH);
 
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, form, sessPanel);
         split.setDividerLocation(380);
